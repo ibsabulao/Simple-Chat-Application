@@ -2,24 +2,45 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
-using MongoDB.Driver;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
+using Newtonsoft.Json.Linq;
+using Supabase;
+using Supabase.Interfaces;
+using Supabase.Postgrest.Models;
+using Supabase.Realtime;
 
 namespace ChatAppServer
 {
     class Program
     {
         private static readonly List<TcpClient> _clients = new List<TcpClient>();
-        private static readonly MongoClient _mongoClient = new MongoClient("mongodb+srv://irenesabulao:G2GOOBSDoHo4mrNH@chatcluster.8ocgn.mongodb.net/?retryWrites=true&w=majority&appName=ChatCluster");
-        private static readonly IMongoDatabase _database = _mongoClient.GetDatabase("ChatApp");
-        private static readonly IMongoCollection<ChatMessage> _collection = _database.GetCollection<ChatMessage>("Messages");
+        private static Supabase.Client _supabaseClient;
+        private static readonly string SupabaseUrl = "https://xixzivkrwqzxdizitthv.supabase.co";
+        private static readonly string SupabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpeHppdmtyd3F6eGRpeml0dGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjY1MDQyMjgsImV4cCI6MjA0MjA4MDIyOH0.hux-YkDeO2vYwnMEV2P8KwPohNeXZHoRUOq95aVcq7Q";
 
         static async Task Main(string[] args)
         {
+            var options = new Supabase.SupabaseOptions
+            {
+                AutoConnectRealtime = true
+            };
+
+            _supabaseClient = new Supabase.Client(SupabaseUrl, SupabaseKey, options);
+            
+            try
+            {
+                var response = await _supabaseClient.From<ChatMessage>().Get();
+                Console.WriteLine("Supabase Connection Test Successful.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Supabase Connection Test Failed: {ex.Message}");
+            }
+
             var listener = new TcpListener(IPAddress.Any, 12345);
             listener.Start();
 
@@ -58,7 +79,9 @@ namespace ChatAppServer
                     if (bytesRead == 0) break;
 
                     string message = Encoding.ASCII.GetString(buffer, 0, bytesRead).Trim();
-                    Console.WriteLine($"{username}: {message}");
+                    var timestamp = DateTime.UtcNow;
+
+                    Console.WriteLine($"[{timestamp:g}] {username}: {message}");
 
                     await SaveMessageAsync(username, message);
 
@@ -91,13 +114,10 @@ namespace ChatAppServer
 
         private static async Task SendChatHistoryAsync(TcpClient client)
         {
-            var history = await _collection
-                .Find(_ => true)
-                .SortBy(m => m.Timestamp)
-                .ToListAsync();
+            var history = await _supabaseClient.From<ChatMessage>().Get();
             var stream = client.GetStream();
 
-            foreach (var msg in history)
+            foreach (var msg in history.Models)
             {
                 string fullMessage = $"[{msg.Timestamp:g}] {msg.Username}: {msg.Message} \n";
                 byte[] buffer = Encoding.ASCII.GetBytes(fullMessage);
@@ -112,20 +132,17 @@ namespace ChatAppServer
             {
                 Username = username,
                 Message = message,
-                Timestamp = DateTime.Now
+                Timestamp = DateTime.UtcNow
             };
 
-            await _collection.InsertOneAsync(chatMessage);
+            await _supabaseClient.From<ChatMessage>().Insert(chatMessage);
         }
-    }
 
-    public class ChatMessage
-    {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; }
-        public string Username { get; set; }
-        public string Message { get; set; }
-        public DateTime Timestamp { get; set; }
+        public class ChatMessage : BaseModel
+        {
+            public string Username { get; set; }
+            public string Message { get; set; }
+            public DateTime Timestamp { get; set; }
+        }
     }
 }
