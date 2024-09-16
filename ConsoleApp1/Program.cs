@@ -38,7 +38,7 @@ namespace ChatAppServer
         private static async Task HandleClientAsync(TcpClient client)
         {
             var stream = client.GetStream();
-            var buffer = new byte[1024];
+            var buffer = new byte[4096];
             string username = "";
 
             try
