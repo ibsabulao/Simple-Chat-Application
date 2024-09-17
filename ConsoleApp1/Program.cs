@@ -12,6 +12,7 @@ using Supabase;
 using Supabase.Interfaces;
 using Supabase.Postgrest.Models;
 using Supabase.Realtime;
+using static Supabase.Postgrest.Constants;
 
 namespace ChatAppServer
 {
@@ -114,7 +115,9 @@ namespace ChatAppServer
 
         private static async Task SendChatHistoryAsync(TcpClient client)
         {
-            var history = await _supabaseClient!.From<ChatMessage>().Get();
+            var history = await _supabaseClient!.From<ChatMessage>()
+                .Order("Timestamp", Ordering.Ascending)
+                .Get();
             var stream = client.GetStream();
 
             foreach (var msg in history.Models)
