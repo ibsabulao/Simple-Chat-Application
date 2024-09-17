@@ -79,13 +79,13 @@ namespace ChatAppServer
                     if (bytesRead == 0) break;
 
                     string message = Encoding.ASCII.GetString(buffer, 0, bytesRead).Trim();
-                    var timestamp = DateTime.UtcNow;
+                    var timestamp = DateTime.UtcNow.ToLocalTime();
 
                     Console.WriteLine($"[{timestamp:g}] {username}: {message}");
 
                     await SaveMessageAsync(username, message);
 
-                    Broadcast($"{username}: {message}");
+                    Broadcast($"[{timestamp:g}] {username}: {message}");
                 }
             }
             catch (Exception ex)
