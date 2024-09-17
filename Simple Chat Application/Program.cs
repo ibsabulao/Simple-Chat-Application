@@ -10,23 +10,23 @@ namespace ChatAppClient
         static async Task Main(string[] args)
         {
             Console.Write("Enter your username: ");
-            string username = Console.ReadLine();
+            string? username = Console.ReadLine();
 
             var client = new TcpClient();
             await client.ConnectAsync("127.0.0.1", 12345);
             var stream = client.GetStream();
 
-            byte[] buffer = Encoding.ASCII.GetBytes(username);
+            byte[] buffer = Encoding.ASCII.GetBytes(username!);
             await stream.WriteAsync(buffer, 0, buffer.Length);
 
-            Task.Run(() => ReceiveMessagesAsync(client));
+            _ = Task.Run(() => ReceiveMessagesAsync(client));
 
             Console.WriteLine("You can now start chatting. Type '/history' to view chat history.");
 
             while (true)
             {
-                string message = Console.ReadLine();
-                if (message.Equals("/history", StringComparison.OrdinalIgnoreCase))
+                string? message = Console.ReadLine();
+                if (message!.Equals("/history", StringComparison.OrdinalIgnoreCase))
                 {
                     Console.WriteLine("Fetching chat history...");
                     await stream.WriteAsync(Encoding.ASCII.GetBytes("/history"), 0, "/history".Length);
