@@ -9,6 +9,7 @@ namespace ChatAppClient
     {
         static async Task Main(string[] args)
         {
+
             Console.Write("Enter your username: ");
             string? username = Console.ReadLine();
 
@@ -21,7 +22,7 @@ namespace ChatAppClient
 
             _ = Task.Run(() => ReceiveMessagesAsync(client));
 
-            Console.WriteLine("You can now start chatting.");
+            Console.WriteLine("You can now start chatting. Type '/users' to see connected users.");
 
             while (true)
             {

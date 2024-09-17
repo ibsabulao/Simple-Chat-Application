@@ -19,6 +19,8 @@ namespace ChatAppServer
     class Program
     {
         private static readonly List<TcpClient> _clients = new List<TcpClient>();
+        private static readonly Dictionary<string, TcpClient> _clientUsernames = new Dictionary<string, TcpClient>();
+
         private static Supabase.Client? _supabaseClient;
         private static readonly string SupabaseUrl = "https://xixzivkrwqzxdizitthv.supabase.co";
         private static readonly string SupabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpeHppdmtyd3F6eGRpeml0dGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjY1MDQyMjgsImV4cCI6MjA0MjA4MDIyOH0.hux-YkDeO2vYwnMEV2P8KwPohNeXZHoRUOq95aVcq7Q";
@@ -68,8 +70,13 @@ namespace ChatAppServer
 
                 int bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length);
                 username = Encoding.ASCII.GetString(buffer, 0, bytesRead).Trim();
-                Console.WriteLine($"{username} joined the chat.");
 
+                lock(_clientUsernames)
+                {
+                    _clientUsernames[username] = client;
+                }
+
+                Console.WriteLine($"{username} joined the chat.");
                 Broadcast($"{username} has joined the chat.");
 
                 await SendChatHistoryAsync(client);
@@ -82,11 +89,16 @@ namespace ChatAppServer
                     string message = Encoding.ASCII.GetString(buffer, 0, bytesRead).Trim();
                     var timestamp = DateTime.UtcNow.ToLocalTime();
 
-                    Console.WriteLine($"[{timestamp:g}] {username}: {message}");
-
-                    await SaveMessageAsync(username, message);
-
-                    Broadcast($"[{timestamp:g}] {username}: {message}");
+                    if (message.Equals("/users", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await SendUserListAsync(client);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[{timestamp:g}] {username}: {message}");
+                        await SaveMessageAsync(username, message);
+                        Broadcast($"[{timestamp:g}] {username}: {message}");
+                    }
                 }
             }
             catch (Exception ex)
@@ -95,6 +107,11 @@ namespace ChatAppServer
             }
             finally
             {
+                lock (_clientUsernames)
+                {
+                    _clientUsernames.Remove(username);
+                }
+                
                 _clients.Remove(client);
                 Console.WriteLine($"{username} left the chat.");
                 Broadcast($"{username} has left the chat.");
@@ -111,6 +128,15 @@ namespace ChatAppServer
                 stream.Write(buffer, 0, buffer.Length);
                 stream.Flush();
             }
+        }
+
+        private static async Task SendUserListAsync(TcpClient client)
+        {
+            var stream = client.GetStream();
+            string usersList = "Connected users: " + string.Join(", ", _clientUsernames.Keys);
+            byte[] buffer = Encoding.ASCII.GetBytes(usersList);
+            await stream.WriteAsync(buffer, 0, buffer.Length);
+            await stream.FlushAsync();
         }
 
         private static async Task SendChatHistoryAsync(TcpClient client)
