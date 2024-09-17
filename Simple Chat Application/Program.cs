@@ -21,20 +21,12 @@ namespace ChatAppClient
 
             _ = Task.Run(() => ReceiveMessagesAsync(client));
 
-            Console.WriteLine("You can now start chatting. Type '/history' to view chat history.");
+            Console.WriteLine("You can now start chatting.");
 
             while (true)
             {
                 string? message = Console.ReadLine();
-                if (message!.Equals("/history", StringComparison.OrdinalIgnoreCase))
-                {
-                    Console.WriteLine("Fetching chat history...");
-                    await stream.WriteAsync(Encoding.ASCII.GetBytes("/history"), 0, "/history".Length);
-                }
-                else
-                {
-                    await stream.WriteAsync(Encoding.ASCII.GetBytes(message), 0, message.Length);
-                }
+                await stream.WriteAsync(Encoding.ASCII.GetBytes(message!), 0, message!.Length);
             }
         }
 
