@@ -18,7 +18,7 @@ namespace ChatAppServer
     class Program
     {
         private static readonly List<TcpClient> _clients = new List<TcpClient>();
-        private static Supabase.Client _supabaseClient;
+        private static Supabase.Client? _supabaseClient;
         private static readonly string SupabaseUrl = "https://xixzivkrwqzxdizitthv.supabase.co";
         private static readonly string SupabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpeHppdmtyd3F6eGRpeml0dGh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjY1MDQyMjgsImV4cCI6MjA0MjA4MDIyOH0.hux-YkDeO2vYwnMEV2P8KwPohNeXZHoRUOq95aVcq7Q";
 
@@ -114,7 +114,7 @@ namespace ChatAppServer
 
         private static async Task SendChatHistoryAsync(TcpClient client)
         {
-            var history = await _supabaseClient.From<ChatMessage>().Get();
+            var history = await _supabaseClient!.From<ChatMessage>().Get();
             var stream = client.GetStream();
 
             foreach (var msg in history.Models)
@@ -135,13 +135,13 @@ namespace ChatAppServer
                 Timestamp = DateTime.UtcNow
             };
 
-            await _supabaseClient.From<ChatMessage>().Insert(chatMessage);
+            await _supabaseClient!.From<ChatMessage>().Insert(chatMessage);
         }
 
         public class ChatMessage : BaseModel
         {
-            public string Username { get; set; }
-            public string Message { get; set; }
+            public string? Username { get; set; }
+            public string? Message { get; set; }
             public DateTime Timestamp { get; set; }
         }
     }
